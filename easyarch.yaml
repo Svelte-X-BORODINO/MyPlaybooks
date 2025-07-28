@@ -1,0 +1,29 @@
+- name: Arch Installation Playbook # Main name
+  become: true # Root access needed
+  hosts: localhost # All commands execs at localhost(your machine)
+  vars: # Variables for installation
+    username: "miska" # Or your username
+    packages: ["base", "linux", "linux-firmware", "vim", "nano", "sudo", "gcc", "make", "clang", "networkmanager", "links", "git"] # You can add your packages
+      
+      
+  tasks: 
+  - name: Disk Configuration
+    command: | # First command: creates MBR label; Creates root(/) partition; Makes it bootable; Write changes. Second command: formates /dev/sda1(root partition) into ext4. Third command: mounts /dev/sda1 to /mnt(our root directory)
+      echo "o\nn\n\n\n\na\nw" | fdisk /dev/sda 
+      mkfs.ext4 /dev/sda1
+      mount /dev/sda1 /mnt
+    
+    args:
+      warn: no
+  
+  - name: Base System Installation
+    pacman:
+      name: "{{ packages }}"
+      root: /mnt
+      extra_args: --noconfirm
+      
+  - name: FSTab Generate
+    command: genfstab -U /mnt >> /mnt/etc/fstab
+    
+  - name: System Setup
+    command: arch-chroot /mnt bash -c 'pacman -S grub; grub-install /dev/sda --target=i386-pc; grub-mkconfig -o /boot/grub/grub.cfg; useradd -mG wheel {{ username }}; echo "%wheel ALL=(ALL:ALL) ALL" >> /etc/sudoers; echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen; locale-gen; echo "LANG=en_US.UTF-8" >> /etc/locale.conf;' 
